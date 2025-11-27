@@ -1,34 +1,72 @@
-// Update this redirect to your deployed domain's callback.html
-const siteOrigin = window.location.origin; // e.g., https://yourapp.vercel.app or https://username.github.io/repo
+// Configuration
+const siteOrigin = window.location.origin;
 const REDIRECT_URI = siteOrigin + "/callback.html";
 
+// Initialize
 document.getElementById("redirectHint").innerText = REDIRECT_URI;
+checkAuthStatus();
 
+// Helper: Display status message
+function showStatus(elementId, type, message) {
+  const el = document.getElementById(elementId);
+  el.className = `status ${type}`;
+  el.textContent = message;
+}
+
+// Helper: Clear status message
+function clearStatus(elementId) {
+  const el = document.getElementById(elementId);
+  el.className = "status";
+  el.textContent = "";
+}
+
+// Helper: Check and display auth status
+function checkAuthStatus() {
+  const tokens = localStorage.getItem("gmail_tokens");
+  const authStatusEl = document.getElementById("authStatus");
+  
+  if (tokens) {
+    authStatusEl.className = "auth-status authenticated";
+    authStatusEl.textContent = "✅ Authenticated";
+  } else {
+    authStatusEl.className = "auth-status";
+    authStatusEl.textContent = "Not authenticated";
+  }
+}
+
+// Auth button handler
 document.getElementById("authBtn").addEventListener("click", async () => {
   const clientId = document.getElementById("clientId").value.trim();
   const clientSecret = document.getElementById("clientSecret").value.trim();
+  const authBtn = document.getElementById("authBtn");
 
   if (!clientId || !clientSecret) {
-    return alert("Please enter both Client ID and Client Secret.");
+    showStatus("authStatusMsg", "error", "⚠️ Please enter both Client ID and Client Secret.");
+    return;
   }
 
-  // Store temporarily so callback.html can access them
+  // Store credentials for callback.html
   localStorage.setItem("gmail_client_id", clientId);
   localStorage.setItem("gmail_client_secret", clientSecret);
   localStorage.setItem("gmail_redirect_uri", REDIRECT_URI);
 
-  // Option A: call backend to build URL
+  authBtn.disabled = true;
+  showStatus("authStatusMsg", "info", "🔄 Redirecting to Google...");
+
   try {
+    // Try to get auth URL from backend
     const urlRes = await fetch(`/api/auth/generate-url?clientId=${encodeURIComponent(clientId)}&redirectUri=${encodeURIComponent(REDIRECT_URI)}`);
     const j = await urlRes.json();
+    
     if (!urlRes.ok) {
-      throw new Error(j.error || "failed to get auth url");
+      throw new Error(j.error || "Failed to generate auth URL");
     }
+    
     window.location.href = j.authUrl;
-    return;
   } catch (err) {
-    // Fallback: build URL client-side
     console.warn("Backend generate-url failed; building client-side.", err);
+    
+    // Fallback: build URL client-side
     const scope = [
       "https://www.googleapis.com/auth/gmail.send",
       "https://www.googleapis.com/auth/gmail.readonly",
@@ -49,23 +87,38 @@ document.getElementById("authBtn").addEventListener("click", async () => {
   }
 });
 
+// Send email button handler
 document.getElementById("sendBtn").addEventListener("click", async () => {
   const to = document.getElementById("to").value.trim();
   const subject = document.getElementById("subject").value.trim();
-  const messageHtml = document.getElementById("message").value;
+  const messageHtml = document.getElementById("message").value.trim();
+  const sendBtn = document.getElementById("sendBtn");
 
+  // Validation
   if (!to || !subject || !messageHtml) {
-    return alert("Fill to, subject and message.");
+    showStatus("sendStatusMsg", "error", "⚠️ Please fill in recipient, subject, and message.");
+    return;
   }
 
+  if (!to.includes("@")) {
+    showStatus("sendStatusMsg", "error", "⚠️ Please enter a valid email address.");
+    return;
+  }
+
+  // Check authentication
   const clientId = localStorage.getItem("gmail_client_id");
   const clientSecret = localStorage.getItem("gmail_client_secret");
   const redirectUri = localStorage.getItem("gmail_redirect_uri");
   const tokens = JSON.parse(localStorage.getItem("gmail_tokens") || "null");
 
   if (!clientId || !clientSecret || !redirectUri || !tokens) {
-    return alert("You must complete authorization first (click 'Open Google Consent Screen').");
+    showStatus("sendStatusMsg", "error", "⚠️ You must complete authorization first. Click 'Open Google Consent Screen'.");
+    return;
   }
+
+  // Send email
+  sendBtn.disabled = true;
+  showStatus("sendStatusMsg", "info", "📤 Sending email...");
 
   try {
     const resp = await fetch("/api/send-email", {
@@ -83,13 +136,22 @@ document.getElementById("sendBtn").addEventListener("click", async () => {
     });
 
     const data = await resp.json();
+    
     if (!resp.ok) {
-      throw new Error(data.error || JSON.stringify(data));
+      throw new Error(data.error || "Failed to send email");
     }
-    alert("Email sent!");
-    console.log("send response:", data);
+
+    showStatus("sendStatusMsg", "success", "✅ Email sent successfully!");
+    console.log("Email sent:", data);
+    
+    // Clear form
+    document.getElementById("to").value = "";
+    document.getElementById("subject").value = "";
+    document.getElementById("message").value = "";
   } catch (err) {
-    alert("Send failed: " + err.message);
-    console.error(err);
+    showStatus("sendStatusMsg", "error", `❌ Error: ${err.message}`);
+    console.error("Send error:", err);
+  } finally {
+    sendBtn.disabled = false;
   }
 });

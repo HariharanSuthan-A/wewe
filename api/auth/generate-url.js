@@ -9,10 +9,6 @@ export default function handler(req, res) {
     return res.status(200).end();
   }
 
-  if (req.method !== "GET" && req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use GET or POST." });
-  }
-
   const clientId = req.query.clientId || req.body?.clientId;
   const redirectUri = req.query.redirectUri || req.body?.redirectUri;
 

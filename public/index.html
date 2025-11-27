@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Gmail OAuth Demo</title>
+  <style>
+    body { font-family: Arial; max-width: 820px; margin: 40px auto; }
+    label { display:block; margin-top:10px; }
+    input, textarea { width:100%; padding:8px; margin-top:6px; }
+    button { padding:10px 16px; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1>Gmail OAuth — static frontend + Vercel backend</h1>
+
+  <p><strong>Step A:</strong> Provide the Google OAuth credentials you created (user-owns credentials).</p>
+
+  <label>Client ID (from Google Cloud Console)
+    <input id="clientId" placeholder="e.g. 12345-...apps.googleusercontent.com" />
+  </label>
+
+  <label>Client Secret
+    <input id="clientSecret" placeholder="user's client secret" />
+  </label>
+
+  <p>Redirect URI must be set in Google Cloud Console to:</p>
+  <pre id="redirectHint"></pre>
+
+  <button id="authBtn">Open Google Consent Screen</button>
+
+  <hr>
+
+  <h3>Send Email (after auth)</h3>
+  <label>To
+    <input id="to" />
+  </label>
+  <label>Subject
+    <input id="subject" />
+  </label>
+  <label>HTML Message
+    <textarea id="message" rows="6"></textarea>
+  </label>
+  <button id="sendBtn">Send Email</button>
+
+  <script src="gmail.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+<body>
+  <p>Processing authorization...</p>
+  <script>
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const error = params.get("error");
+
+      if (error) {
+        alert("Error from Google OAuth: " + error);
+        window.location.href = "/";
+        return;
+      }
+
+      // Client ID/Secret and redirectUri must be present in localStorage (set by index.html before redirect)
+      const clientId = localStorage.getItem("gmail_client_id");
+      const clientSecret = localStorage.getItem("gmail_client_secret");
+      const redirectUri = localStorage.getItem("gmail_redirect_uri");
+
+      if (!code || !clientId || !clientSecret || !redirectUri) {
+        alert("Missing client credentials in localStorage. Start the auth flow again.");
+        window.location.href = "/";
+        return;
+      }
+
+      // Exchange code for tokens via backend
+      try {
+        const resp = await fetch("/api/auth/oauth-callback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code, clientId, clientSecret, redirectUri })
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          alert("Token exchange failed: " + (data.error || JSON.stringify(data)));
+          window.location.href = "/";
+          return;
+        }
+
+        // Save tokens in localStorage (or handle differently)
+        localStorage.setItem("gmail_tokens", JSON.stringify(data.tokens));
+        alert("Authorization successful! You can now send email.");
+        window.location.href = "/";
+      } catch (err) {
+        alert("Token exchange error: " + err.message);
+        window.location.href = "/";
+      }
+    })();
+  </script>
+</body>
+</html>
